@@ -125,21 +125,25 @@ def load_and_check_data_pickle():
 def menu(data):
     experimenter = data['TSP_generator']
     algs = list(set([i for j in experimenter.set_of_cities for i in j.results]))
+    results_allMHs_on_allInstances = True
 
     print('\nThere are results for:')
     for index, j in enumerate(experimenter.set_of_cities):
         print('Instance ', index, ': ', sep='', end='')
-        for i in sorted(j.results):
-            if len(j.results[i]) > 1000:
-                print(i, ', ', sep='', end='')
+        for i_alg in algs:
+            if i_alg in j.results:
+                if len(j.results[i_alg]) > 1000:
+                    print(i_alg, ', ', sep='', end='')
+                else:
+                    print('Error: Too little data for a MH. Please remove this data: ', i, '(', len(j.results[i]),')', sep='')
+                    sys.exit(1)
             else:
-                print('Error: Too little data for a MH. Please remove this data: ', i, '(', len(j.results[i]),')', sep='')
-                sys.exit(1)
+                results_allMHs_on_allInstances = False
         print('')
 
     print('\nMENU')
     print('1: Continue running MHs')
-    print('2: Remove some results')
+    print('2: Remove all the results of a MH')
     print('3: Increase the number of instances by one')
     print('4: Generate plots')
     print('^C: exit')
@@ -151,39 +155,47 @@ def menu(data):
     if option == '1':
         return option
     elif option == '2':
-        instance_index = int(input('Please, introduce the index of the TSP Instance (0-' + str(len(experimenter.set_of_cities)-1)+')\n'))
         mh_name = input('Please, introduce the name of the MH:\n')
+        any_deletion = False
+        confirmation = input('We are removing the results of ' + mh_name + '. Proceed? (y/n)\n')
+        if confirmation == 'y':
 
-        if mh_name in experimenter.set_of_cities[instance_index].results:
-            confirmation = input('We are removing the results of '+mh_name+' from the TSP instance '+str(instance_index)+'. Proceed? (y/n)\n')
-            if confirmation == 'y':
-                del experimenter.set_of_cities[instance_index].results[mh_name]
-                logging.info(str(datetime.now())+': RESULTS REMOVED: '+mh_name+' on TSP instance '+str(instance_index))
+            for index_instance, i_tsp_instance in enumerate(experimenter.set_of_cities):
+                if mh_name in i_tsp_instance.results:
+                    del i_tsp_instance.results[mh_name]
+                    logging.info(str(datetime.now())+': RESULTS REMOVED (pickle update pending): '+mh_name+' on TSP instance '+str(index_instance))
+                    any_deletion = True
+            if not any_deletion:
+                print('No results found (nor removed)')
+            else:
                 update_data_pickle(data)
                 print('Deletion completed')
-            else:
-                print('Deletion cancelled')
         else:
-            print('There are not results of', mh_name, 'in the TSP instance', instance_index)
+            print('Deletion cancelled')
+
     elif option == '3':
         experimenter.introduce_a_new_instance()
-        logging.info(str(datetime.now()) + ': NEW TSP INSTANCE: ' + str(len(experimenter.set_of_cities) - 1))
+        logging.info(str(datetime.now()) + ': NEW TSP INSTANCE (pickle update pending): ' + str(len(experimenter.set_of_cities) - 1))
         update_data_pickle(data)
+        print('Instance created and added')
     elif option == '4':
-        print('Generating plots:')
-        with tqdm(total=6) as pbar:
-            data['TSP_generator'].plot_convergence_graphs('convergence_graphs_xlog_ylog.png', True, True)
-            pbar.update()
-            data['TSP_generator'].plot_convergence_graphs('convergence_graphs_ylog.png', False, True)
-            pbar.update()
-            data['TSP_generator'].plot_convergence_graphs('convergence_graphs.png', False, False)
-            pbar.update()
-            data['TSP_generator'].plot_rank_evolution_graph('rank_evolution.png', False, False)
-            pbar.update()
-            data['TSP_generator'].plot_convergence_graphs('convergence_graphs_xlog.png', True, False)
-            pbar.update()
-            data['TSP_generator'].plot_rank_evolution_graph('rank_evolution_xlog.png', True, False)
-            pbar.update()
+        if not results_allMHs_on_allInstances:
+            print('Plots not generated. All the MHs must have been applied on all the TSP instance.')
+        else:
+            print('Generating plots:')
+            with tqdm(total=6) as pbar:
+                data['TSP_generator'].plot_convergence_graphs('convergence_graphs_xlog_ylog.png', True, True)
+                pbar.update()
+                data['TSP_generator'].plot_convergence_graphs('convergence_graphs_ylog.png', False, True)
+                pbar.update()
+                data['TSP_generator'].plot_convergence_graphs('convergence_graphs.png', False, False)
+                pbar.update()
+                data['TSP_generator'].plot_rank_evolution_graph('rank_evolution.png', False, False)
+                pbar.update()
+                data['TSP_generator'].plot_convergence_graphs('convergence_graphs_xlog.png', True, False)
+                pbar.update()
+                data['TSP_generator'].plot_rank_evolution_graph('rank_evolution_xlog.png', True, False)
+                pbar.update()
     else:
         print('Not a valid option: ', option)
 
@@ -204,10 +216,12 @@ def run(mh_function, tsp_instance, index):
             logging.info(str(datetime.now())+': EXECUTION BEGINS: ' + mh_function.__name__ + ' on TSP intsance ' + str(index))
             mh_function(num_cities, ffunction)
         except MaxRuntimeHit:
-            logging.info(str(datetime.now())+': EXECUTION ENDED: ' + mh_function.__name__ + ' on TSP intsance ' + str(index))
+            logging.info(str(datetime.now())+': EXECUTION ENDED (pickle update pending): ' + mh_function.__name__ + ' on TSP intsance ' + str(index))
             update_data_pickle(data)
         except KeyboardInterrupt:
+            print('Executions interrupted')
             logging.info(str(datetime.now())+': EXECUTION INTERRUPTED: ' + mh_function.__name__ + ' on TSP intsance ' + str(index))
+            raise
         except Exception as e:
             print('ERROR: Something went wrong with a MH. See log.log', mh_function.__name__)
             logging.error(str(datetime.now())+':\n'+str(e), exc_info=True)
@@ -220,7 +234,10 @@ if __name__ == '__main__':
     experimenter = data['TSP_generator']
 
     while True:
-        option = menu(data)
+        try:
+            option = menu(data)
+        except KeyboardInterrupt:
+            option = 'None'
 
         if option == '1':
 
@@ -248,9 +265,14 @@ if __name__ == '__main__':
 
             print('EXECUTING MHs (you can kill the process with ^C whenever you want. Results of the executions would be stored incrementally. Those of the last execution would be discarded)')
             for i in tqdm(pending_executions):
-                run(i[0], i[1], i[2])
+                try:
+                    run(i[0], i[1], i[2])
+                except KeyboardInterrupt:
+                    option = 'exit'
+                    break
 
         if option == 'exit':
             break
 
-
+        _ = input('Press Enter to continue')
+        sys.stdin.flush()
