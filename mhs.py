@@ -1,4 +1,5 @@
 import numpy as np
+import random
 
 def random_search(N, f):
     def generate_permutation(N):

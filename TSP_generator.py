@@ -96,22 +96,26 @@ class TSP_Instance:
     def cost(self, permutation):
 
         # print(permutation)
+        if 0 in permutation:
+            permutation_aux = permutation
+        else:
+            permutation_aux = [i-1 for i in permutation]
 
         x = self.cities['x']
         y = self.cities['y']
 
         # calculate the total distance traveled in the circuit
         total_distance = 0
-        for i in range(len(permutation) - 1):
-            p1 = permutation[i]
-            p2 = permutation[i + 1]
+        for i in range(len(permutation_aux) - 1):
+            p1 = permutation_aux[i]
+            p2 = permutation_aux[i + 1]
             distance = self.distances[p1, p2]  # np.sqrt((x[p1]-x[p2])**2 + (y[p1]-y[p2])**2)
             # print(distance)
             total_distance += distance
 
         # add the distance from the last point to the first point
-        p1 = permutation[-1]
-        p2 = permutation[0]
+        p1 = permutation_aux[-1]
+        p2 = permutation_aux[0]
         distance = self.distances[p1, p2]  # np.sqrt((x[p1]-x[p2])**2 + (y[p1]-y[p2])**2)
         # print(distance, '\n---------------------')
         total_distance += distance

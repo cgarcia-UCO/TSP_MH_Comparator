@@ -135,8 +135,7 @@ def menu(data):
                 if len(j.results[i_alg]) > 1000:
                     print(i_alg, ', ', sep='', end='')
                 else:
-                    print('Error: Too little data for a MH. Please remove this data: ', i, '(', len(j.results[i]),')', sep='')
-                    sys.exit(1)
+                    print('Error: Too little data for a MH. Please remove this data: ', i_alg, '(', len(j.results[i_alg]),')', sep='')
             else:
                 results_allMHs_on_allInstances = False
         print('')
@@ -225,6 +224,10 @@ def run(mh_function, tsp_instance, index):
         except Exception as e:
             print('ERROR: Something went wrong with a MH. See log.log', mh_function.__name__)
             logging.error(str(datetime.now())+':\n'+str(e), exc_info=True)
+            sys.exit(1)
+        else:
+            print('No MAX_RUNTIME_HIT: The following algorithm terminated before the maximal runtime and results were not saved: ' + mh_function.__name__)
+            print('Did you replace the main loop with While True:?')
             sys.exit(1)
 
 if __name__ == '__main__':
