@@ -1,5 +1,7 @@
 import numpy as np
 import random
+import math
+np.seterr(all='raise')
 
 def random_search(N, f):
     def generate_permutation(N):
