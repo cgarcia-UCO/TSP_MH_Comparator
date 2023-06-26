@@ -49,7 +49,7 @@ class TSP_Instance:
         if alg in self.resutls:
             return self.results[alg]
         else:
-            return [self.sqrt_2 * self.size()]
+            return [(1,self.sqrt_2 * self.size())]
 
     @classmethod
     def random_cities(cls, N):
@@ -172,7 +172,7 @@ class TSP_Instance:
         if not alg_id in self.results:
             self._reset_init_time()
             self._reset_num_evals()
-            self.results[alg_id] = [current_cost]
+            self.results[alg_id] = [(1,current_cost)]
         else:
             now_time = datetime.now()
 
@@ -180,7 +180,10 @@ class TSP_Instance:
                 raise MaxRuntimeHit
 
             self._num_evals += 1
-            self.results[alg_id].append(min(self.results[alg_id][-1], current_cost))
+            value_to_be_registered = min(self.results[alg_id][-1][1], current_cost)
+
+            if value_to_be_registered < self.results[alg_id][-1][1]:
+                self.results[alg_id].append((self._num_evals, value_to_be_registered))
 
         return current_cost
 
@@ -195,7 +198,9 @@ class TSP_Instance:
             ax = axes_or_filename
 
         for i in self.results:
-            ax.plot(self.results[i])
+            x = [j[0] for j in self.results[i]]
+            y = [j[1] for j in self.results[i]]
+            ax.step(x,y,where='post')
 
         if type(axes_or_filename) == str:
             plt.savefig(axes_or_filename)
@@ -262,7 +267,7 @@ class TSP_Experiment_Generator:
         normalised_results = []
         for i_problem in self.set_of_cities:
             normalised_results.append(pd.DataFrame(
-                dict([(key, pd.Series(value)) for key, value in i_problem.results.items()])))
+                dict([(key, pd.Series(dict(value))) for key, value in i_problem.results.items()])))
             normalised_results[-1].ffill(axis=0, inplace=True)
             max_value = normalised_results[-1].max().max()
             min_value = normalised_results[-1].min().min()
@@ -280,13 +285,24 @@ class TSP_Experiment_Generator:
         for i in algs:
             # Results of algorithm i on all the problems
             # results = [j.results[i] for j in self.set_of_cities]
-            results = [j[i] for j in normalised_results if i in j.columns]
-            df = pd.DataFrame(results).T
+            # results = [j[i] for j in normalised_results if i in j.columns]
+            df = pd.DataFrame(dict([(index, j[i]) for index, j in enumerate(normalised_results) if i in j.columns]))
+            # df = pd.DataFrame(results).T
             df.ffill(axis=0, inplace=True)
-            ax.plot(np.arange(df.shape[0]) + 1, np.mean(df, axis=1), label=i)
-            ax.fill_between(
-                np.arange(df.shape[0]) + 1, np.min(df, axis=1), np.max(df, axis=1),
-                alpha=0.2)
+            try:
+                ax.step(df.index, np.mean(df, axis=1), where='post', label=i)
+            except ValueError:
+                print(normalised_results[0].index)
+                print(normalised_results[1].index)
+                print(normalised_results[2].index)
+                print(list(df.index))
+                print(df.loc[:20])
+                raise
+            # ax.plot(np.arange(df.shape[0]) + 1, np.mean(df, axis=1), label=i)
+            ax.fill_between(df.index, np.min(df, axis=1), np.max(df, axis=1), alpha=0.2)
+            # ax.fill_between(
+            #     np.arange(df.shape[0]) + 1, np.min(df, axis=1), np.max(df, axis=1),
+            #     alpha=0.2)
 
         ax.legend()
 
@@ -326,21 +342,22 @@ class TSP_Experiment_Generator:
 
         for i_problem in self.set_of_cities:
             data_results = pd.DataFrame(
-                dict([(key, pd.Series(value)) for key, value in i_problem.results.items()]))
+                dict([(key, pd.Series(dict(value))) for key, value in i_problem.results.items()]))
 
             # Extend the results according to the maximal execution length
-            num_rows = data_results.shape[0]
-            if num_rows < max_length:
-                required_rows = max_length - num_rows
-                requited_columns = data_results.shape[1]
-                required_data = required_rows * requited_columns
-                new_data = pd.DataFrame(np.repeat(np.nan, required_data).reshape((required_rows,requited_columns)),
-                                        columns=data_results.columns)
-                data_results = pd.concat((data_results, new_data), axis=0)
+            # TODO This should not be needed, with index as iterations (the following commented lines)
+            # num_rows = data_results.shape[0]
+            # if num_rows < max_length:
+            #     required_rows = max_length - num_rows
+            #     requited_columns = data_results.shape[1]
+            #     required_data = required_rows * requited_columns
+            #     new_data = pd.DataFrame(np.repeat(np.nan, required_data).reshape((required_rows,requited_columns)),
+            #                             columns=data_results.columns)
+            #     data_results = pd.concat((data_results, new_data), axis=0)
 
             for i_alg in algs:
                 if i_alg not in data_results.columns:
-                    data_results = pd.concat((data_results, pd.DataFrame({i_alg: [i_problem.size()*TSP_Instance.sqrt_2]})), axis=1)
+                    data_results = pd.concat((data_results, pd.DataFrame({i_alg: dict([(1,i_problem.size()*TSP_Instance.sqrt_2)])})), axis=1)
 
             data_results.ffill(axis=0, inplace=True)
             data_results = data_results.round(decimals=6)
@@ -350,15 +367,18 @@ class TSP_Experiment_Generator:
 
         for i in algs:
             # ranks = [j.results_ranks[i] for j in self.set_of_cities]
-            df = pd.DataFrame({str(index): list(j[i]) for index, j in enumerate(results_ranks)})
+            # df = pd.DataFrame({str(index): list(j[i]) for index, j in enumerate(results_ranks)})
+            df = pd.DataFrame({str(index): j[i] for index, j in enumerate(results_ranks)})
             # df = df.T
             df.ffill(axis=0, inplace=True)
             mean = np.mean(df, axis=1)
             std = np.std(df, axis=1)
-            ax.plot(np.arange(df.shape[0]) + 1, mean, label=i)
-            ax.fill_between(
-                np.arange(df.shape[0]) + 1, mean - std, mean + std,
-                alpha=0.2)
+            ax.step(df.index, mean, where='post', label=i)
+            ax.fill_between(df.index, mean - std, mean + std, alpha=0.2)
+            # ax.plot(np.arange(df.shape[0]) + 1, mean, label=i)
+            # ax.fill_between(
+            #     np.arange(df.shape[0]) + 1, mean - std, mean + std,
+            #     alpha=0.2)
 
         ax.legend()
 
