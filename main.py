@@ -132,10 +132,10 @@ def menu(data):
         print('Instance ', index, ': ', sep='', end='')
         for i_alg in algs:
             if i_alg in j.results:
-                if len(j.results[i_alg]) > 1000:
+                if len(j.results[i_alg]) >= 1:
                     print(i_alg, ', ', sep='', end='')
-                else:
-                    print('Error: Too little data for a MH. Please remove this data: ', i_alg, '(', len(j.results[i_alg]),')', sep='')
+                # else:
+                #     print('Error: Too little data for a MH. Please remove this data: ', i_alg, '(', len(j.results[i_alg]),')', sep='')
             else:
                 results_allMHs_on_allInstances = False
         print('')
