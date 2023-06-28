@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
+import scipy.stats as st
 
 # define Python user-defined exceptions
 class MaxRuntimeHit(Exception):
@@ -324,8 +325,12 @@ class TSP_Experiment_Generator:
             df.ffill(axis=0, inplace=True)
             mean = np.mean(df, axis=1)
             std = np.std(df, axis=1)
+            np.seterr(all='ignore')
+            conf_interval = st.norm.interval(confidence=0.95, loc=mean, scale=st.sem(df,axis=1))
+            np.seterr(all='raise')
             ax.step(df.index, mean, where='post', label=i)
-            ax.fill_between(df.index, mean - std, mean + std, alpha=0.2)
+            # ax.fill_between(df.index, mean - std, mean + std, alpha=0.2)
+            ax.fill_between(df.index, conf_interval[0], conf_interval[1], alpha=0.2)
 
         ax.legend()
 
