@@ -275,7 +275,11 @@ class TSP_Experiment_Generator:
                 print(list(df.index))
                 print(df.loc[:20])
                 raise
-            ax.fill_between(df.index, np.min(df, axis=1), np.max(df, axis=1), alpha=0.2)
+            np.seterr(all='ignore')
+            conf_interval = st.norm.interval(confidence=0.95, loc=np.mean(df, axis=1), scale=st.sem(df,axis=1))
+            np.seterr(all='raise')
+            # ax.fill_between(df.index, np.min(df, axis=1), np.max(df, axis=1), alpha=0.2)
+            ax.fill_between(df.index, conf_interval[0], conf_interval[1], alpha=0.2)
 
         ax.legend()
 
