@@ -8,6 +8,7 @@ from inspect import getmembers, isfunction, signature
 from tqdm import tqdm
 import numpy as np
 import random
+from shutil import move
 
 sys.path.append('.')
 from TSP_generator import *
@@ -81,7 +82,8 @@ def update_data_pickle(framework_data):
     with open('data_new.pickle', 'wb') as f:
         pickle.dump(all_data, f)
 
-    os.rename('data_new.pickle', 'data.pickle')
+    # os.rename('data_new.pickle', 'data.pickle')
+    move('data_new.pickle', 'data.pickle')
     logging.info(str(datetime.now())+': DATABASE UPDATED: data.pickle')
 
 
